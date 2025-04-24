@@ -1,160 +1,272 @@
-# 🌍 Global Internship Marketplace – System Design Report
+# Global Internship Marketplace – System Design Report
 
-## 🔰 Project Goal
-Design a globally distributed system that connects **international students** with **internship opportunities** worldwide. The system should automate application processes, document verification, and legal compliance across borders.
+## 1. Project Goal
 
----
-
-Category | Non-Functional Requirement | Reason / Justification
-🎯 Accuracy | High data accuracy & integrity | Legal documents, visa forms, contracts must be 100% accurate — errors can block applications or cause legal issues.
-⚖️ Compliance | Data residency & regulation compliance (e.g., GDPR, HIPAA, etc.) | Mandatory to operate internationally — student data must stay within specific regions.
-⚙️ Consistency | Strong consistency for critical workflows (e.g., document submission, status tracking) | Students must see the true status of their applications at all times. Documents must not go out of sync.
-🚀 Scalability | Scalable to global user base (millions of students/employers) | Especially during peak cycles like summer internships or job fairs.
-💡 Availability | High availability (ideally 99.9%+) | Employers and students may come from different time zones. Downtime directly impacts trust and usage.
-🔐 Security & Privacy | End-to-end encryption, role-based access, consent management | Users upload highly sensitive documents (IDs, visas, contracts). Any leak = reputation + legal disaster.
-📦 Auditability | Complete audit logs for legal actions (submission, editing, consent) | Required by law for disputes, inspections, or internal compliance.
-🧠 Adaptability | Support for country-specific rule changes | Laws and visa requirements change frequently. System must evolve without downtime.
-🌍 Localization | Multilingual, culturally adaptive UI | Targeting a global audience — students from over 100 countries.
-⏱ Latency | Low-latency access to localized services | Delays in form submission or status changes hurt user experience. Especially critical in real-time interview scheduling or uploads.
-🔄 Resilience | Fault tolerance & graceful degradation | One region going down should not take down the global system. Retry mechanisms and failovers must be in place.
-📣 Observability | Monitoring, alerting, and tracing | Needed for compliance, quick issue resolution, and user trust.
-
-## 🧠 Problem Analysis
-
-### Key Challenges
-- Legal complexity across jurisdictions (visa, labor laws, document formats)
-- Global availability and scalability
-- Accuracy in sensitive data and compliance
-- Routing applications through the correct verification/legal channels
-- Secure authentication and document storage
+Design a globally distributed system that connects international students with internship opportunities across borders. The system must handle applications, verify documents, ensure legal compliance (visa/work rules), and match candidates with opportunities.
 
 ---
 
-## 🧱 System Components
+## Functional requirements
 
-### Software Services (Modular Monolith + Externalized Engines)
-- **User Service**: Registration, authentication (OAuth2), profiles
-- **Application Service**: Submitting & tracking internship applications
-- **Matching Engine**: Filters and ranks internship offers based on skills, location, language
-- **Document Service**: File uploads, format checks, OCR, checksum validation
-- **Verification Service**: Interfaces with embassies, universities, and background checks
-- **Legal Compliance Engine**: Evaluates legal fit, flags violations per jurisdiction
-- **Workflow Orchestrator**: Saga pattern coordinator for multistep operations
-- **Notification Service**: Sends SMS, emails, system alerts
-- **Admin & Analytics Dashboard**: For staff, support, and monitoring
-- **Audit Logger**: Stores immutable logs for legal reviews
+- Users can register, log in, and create profiles
+- Employers can post internships
+- Students apply to internships
+- Documents are uploaded and verified
+- Applications are legally checked
+- Real-time status updates and notifications
 
----
+### Non-Functional:
+- Support 10,000+ concurrent users
+- Response time < 300ms for search and matching
+- 99.9% uptime availability
+- End-to-end data encryption
+- GDPR and global data regulation compliance
 
-## ⚙️ Databases & Storage Components
+## 2. Non-Functional Requirements
 
-| Storage          | Purpose                                               |
-|------------------|--------------------------------------------------------|
-| **PostgreSQL**    | Users, applications, employer profiles, status logs  |
-| **Redis**         | Caching, session tokens, rate limiting               |
-| **Object Store**  | File storage (CVs, passport scans, offers) via S3    |
-| **Elasticsearch** | Full-text search on internships, users, companies    |
-| **Kafka or Loki** | Append-only legal logs and event sourcing            |
-| **Data Lake**     | Aggregated logs, matching model training data        |
+### Business metrics:
+- Support 10,000+ concurrent users
+- Response time < 300ms for search and matching
+- 99.9% uptime availability
+- End-to-end data encryption
+- GDPR and global data regulation compliance
 
----
-
-## 📈 Data Flow
-
-1. **Student Signup**  
-   → User Service → PostgreSQL → Auth Token (Redis)  
-   → Notification Service (Email Verification)
-
-2. **Upload Documents**  
-   → Document Service  
-   → S3 Storage + Hash/format check  
-   → Verification Service → External APIs (e.g., University registry)
-
-3. **Apply for Internship**  
-   → Application Service → PostgreSQL  
-   → Legal Compliance Engine validates visa/work permissions  
-   → Audit Logger stores steps
-
-4. **Recommendation Flow**  
-   → Matching Engine pulls user & company data  
-   → Query Elasticsearch  
-   → Return scored results
-
-5. **Workflow Engine for Multi-step Ops**  
-   → Saga Manager coordinates across services  
-   → Retry/fallback logic per service  
-   → Log events to Kafka
+| Category             | Requirement                                      | Justification                                                                 |
+|----------------------|--------------------------------------------------|------------------------------------------------------------------------------|
+| Accuracy             | High data integrity                              | Errors in legal documents could block international opportunities.          |
+| Compliance           | Regulatory compliance (GDPR, HIPAA, etc.)        | Required for legal operation across different countries.                     |
+| Consistency          | Strong consistency for critical workflows        | Ensures correctness of application and document states.                      |
+| Scalability          | Horizontal scaling support                       | To handle global user base, especially during peak cycles.                   |
+| Availability         | ≥99.9% uptime                                    | Required for global users in all time zones.                                 |
+| Security & Privacy   | End-to-end encryption and consent control        | Sensitive user documents must remain private and safe.                       |
+| Auditability         | Immutable logs for legal activity                | Required for dispute handling and compliance reviews.                        |
+| Adaptability         | Country-specific ruleset updates without downtime| Legal requirements change frequently.                                        |
+| Localization         | Multilingual UI and content                      | Accessible for users in 100+ countries.                                      |
+| Latency              | Low-latency regional access                      | Ensures responsive user experience globally.                                 |
+| Resilience           | Graceful degradation in failure                  | Local failures must not affect global availability.                          |
+| Observability        | Monitoring, tracing, alerting                    | Ensures compliance and rapid troubleshooting.                                |
 
 ---
 
-## ⚖️ Non-Functional Requirements
+## 3. Problem Analysis
 
-| Requirement       | Description                                                                 |
-|------------------|-----------------------------------------------------------------------------|
-| ✅ **Data Accuracy**    | Must ensure strict document and user info correctness                   |
-| ✅ **Scalability**      | Handle global growth, autoscaling backend containers                    |
-| ✅ **High Availability**| Failover setups, multi-region deployments                                |
-| ✅ **Consistency**      | Strong consistency for core data; eventual for audit/logging            |
-| ✅ **Legal Auditability**| Immutable, tamper-proof logs for document verification and workflow     |
-| ✅ **Security & Privacy**| End-to-end encryption, zero-trust auth, GDPR-compliant policies         |
+Key challenges include:
+- Diverse legal regulations across jurisdictions
+- Scalable and available infrastructure for global traffic
+- Guaranteeing correctness and privacy of sensitive data
+- Directing processes through legal verification channels
+- Providing a responsive, secure user experience
 
 ---
 
-## 🧱 Architecture Pattern
+## 4. System Components
 
-### ➤ Adopted: **Modular Monolith with Distributed Services**
+### Core Software Services (Modular Monolith + External Engines)
 
-- Clear module boundaries within single backend unit
-- Pluggable services for document validation, notification, legal compliance
-- Common DB ensures consistency
-- External services handle region-specific logic
-
----
-
-## 📐 C4 Model Summary
-
-### Level 1: System Context
-- Users: Students, Employers, Legal Validators
-- External: OAuth, University APIs, Embassies, Payment Providers
-
-### Level 2: Container View
-
-| Container         | Description                                                |
-|------------------|------------------------------------------------------------|
-| Web/Mobile Frontend | Vue/Nuxt or React PWA                                    |
-| Backend API       | Modular monolith exposing REST/gRPC endpoints             |
-| Legal Engine      | Rules & workflows per country                             |
-| Document Service  | Handles uploads and validations                           |
-| Workflow Engine   | Coordinates services for multi-step flows                 |
-| Notification Engine| Emails, SMS, push notifications                          |
-| PostgreSQL        | User and app data store                                   |
-| S3-Compatible Store| Files, PDFs, CVs                                         |
-| Redis             | Session and temporary cache                               |
-| Kafka             | Event & audit logs                                        |
-| Elasticsearch     | Search and ranking                                        |
-
-### Level 3: Component View (App Module Example)
-
-| Component           | Purpose                                        |
-|---------------------|------------------------------------------------|
-| `ApplicationController` | API for applying to internships               |
-| `MatchingService`      | Ranks internships by profile fit             |
-| `ComplianceService`    | Calls legal engine for jurisdictional checks |
-| `DocumentService`      | Upload, OCR, and verification                |
-| `SagaOrchestrator`     | Coordinates process steps                    |
-| `AuditLogger`          | Logs all actions for compliance              |
+- **User Service** – Registration, authentication (OAuth2), profile
+- **Application Service** – Internship application submission & tracking
+- **Matching Engine** – Scoring internships by profile and compliance
+- **Document Service** – Upload, OCR validation, checksum, formatting
+- **Verification Service** – Integration with embassies/universities
+- **Legal Compliance Engine** – Policy-as-code regional compliance
+- **Workflow Orchestrator** – Saga pattern coordinator for process steps
+- **Notification Service** – Emails, SMS, system alerts
+- **Admin & Analytics Portal** – Ops dashboard and reports
+- **Audit Logger** – Legal-grade immutable activity records
 
 ---
 
-## 🧭 Deployment Architecture
+```mermaid
+flowchart TD
+    subgraph Network
+        LB[Load Balancer]
+        GW[API Gateway]
+    end
 
-- Deployed via Kubernetes on multi-region cloud (e.g., AWS, GCP)
-- CDN (Cloudflare, CloudFront) for frontend & document delivery
-- Load balancer and service mesh (Istio/Linkerd) for secure routing
-- Secrets managed via Vault
-- Centralized observability stack (Grafana + Prometheus + Loki)
+    subgraph Services
+        AUTH[User Auth Service]
+        APP[Application Service]
+        DOC[Document Service]
+        LEGAL[Legal Engine]
+        MATCH[Matching Engine]
+        WORK[Workflow Orchestrator]
+        NOTIF[Notification Service]
+    end
+
+    subgraph Databases
+        PG[(PostgreSQL)]
+        REDIS[(Redis Cache)]
+        S3[(S3-Compatible Storage)]
+        ES[(Elasticsearch)]
+        KAFKA[(Kafka Logs)]
+    end
+
+    LB --> GW
+    GW --> AUTH
+    GW --> APP
+    GW --> DOC
+    GW --> LEGAL
+    GW --> MATCH
+    GW --> WORK
+    GW --> NOTIF
+
+    AUTH --> PG
+    APP --> PG
+    APP --> REDIS
+    DOC --> S3
+    DOC --> KAFKA
+    LEGAL --> PG
+    LEGAL --> KAFKA
+    MATCH --> ES
+    WORK --> PG
+    NOTIF --> REDIS
+
+```
+
+## 5. Data Infrastructure
+
+| Component          | Role                                                              |
+|--------------------|-------------------------------------------------------------------|
+| PostgreSQL         | Primary transactional store for users, applications, status logs |
+| Redis              | Caching, token/session handling, rate-limiting                   |
+| S3-Compatible Store| Document storage (CVs, passports, contracts)                     |
+| Elasticsearch      | Indexing internships and users for rapid search                  |
+| Kafka / Loki       | Event streaming and compliance logs                              |
+| Data Lake          | Analytics, model training, historical archiving                  |
 
 ---
 
-## 📁 Folder Structure Suggestion
+```mermaid
+flowchart TD
+    USER[User Input/API Call] --> REDIS
+    REDIS --> PG[(PostgreSQL)]
+    REDIS --> ES[(Elasticsearch)]
+    USER --> DOC_PROC[Document Processor]
+    DOC_PROC --> S3[(Object Store)]
+    DOC_PROC --> VER_API[External Verification APIs]
+    VER_API --> DOC_PROC
+    DOC_PROC --> PG
 
+    PG --> KAFKA[(Kafka Event Bus)]
+    KAFKA --> LOGGER[Audit Log Processor]
+    KAFKA --> WORKFLOW[Workflow Manager]
+    KAFKA --> ANALYTICS[Analytics Pipeline]
+
+    PG --> ANALYTICS
+    S3 --> ANALYTICS
+    ES --> ANALYTICS
+    ANALYTICS --> DATA_LAKE[(Data Lake Storage)]
+
+```
+
+## 6. Data Flow Overview
+
+1. **User Registration**  
+   User → Auth Service → PostgreSQL (store) + Redis (token)  
+   → Notification Service (email confirmation)
+
+2. **Document Upload**  
+   User → Document Service → S3 Storage + verification checks  
+   → Verification Service → University/Embassy APIs
+
+3. **Internship Application**  
+   User → Application Service → PostgreSQL  
+   → Legal Compliance Engine for jurisdictional checks  
+   → Audit Logger logs results
+
+4. **Matching Recommendations**  
+   Matching Engine ← User profile + internship index (Elasticsearch)  
+   → Ranked internship suggestions
+
+5. **Orchestration & Logging**  
+   Saga Manager → Triggers workflows and fallback/retry on failure  
+   → Kafka logs all actions immutably
+
+---
+
+## 7. Architecture Pattern
+
+### Adopted Pattern: Modular Monolith with Distributed Federated Services
+
+- Internal services modularized but tightly integrated for strong consistency
+- Stateless components enable horizontal scaling
+- Distributed deployment for legal separation and performance
+- External compliance and verification APIs integrated securely
+
+---
+
+
+## 8. C4 Model Diagrams (Mermaid-Based)
+
+```mermaid
+C4Context
+title Global Internship Marketplace - System Context
+
+Person(student, "Student", "Applies for internships, uploads documents")
+Person(employer, "Employer", "Posts internships and reviews candidates")
+System(system, "Internship Platform", "Manages applications, matching, verification")
+
+System_Ext(universityAPI, "University Verification API", "Validates student academic records")
+System_Ext(embassyAPI, "Embassy API", "Checks visa and labor requirements")
+System_Ext(oauth, "OAuth Provider", "Authenticates users")
+
+Rel(student, system, "Uses")
+Rel(employer, system, "Uses")
+Rel(system, universityAPI, "Validates documents")
+Rel(system, embassyAPI, "Verifies legal eligibility")
+Rel(student, oauth, "Login")
+
+
+```
+
+```mermaid
+C4Container
+title Internship Platform - Container Diagram
+
+System_Boundary(system, "Internship Platform") {
+  Container(web, "Web/Mobile App", "Vue/Nuxt", "Interface for students and employers")
+  Container(api, "API Gateway", "Node.js or Kong", "Routes requests to internal services")
+  Container(userService, "User Service", "FastAPI", "Handles registration and login")
+  Container(applicationService, "Application Service", "FastAPI", "Manages applications")
+  Container(documentService, "Document Service", "Python", "Processes and verifies documents")
+  Container(legalService, "Legal Compliance Engine", "OPA", "Applies legal rules")
+  Container(matchingService, "Matching Engine", "Python + Elastic", "Recommends internships")
+  Container(workflowEngine, "Workflow Orchestrator", "Temporal", "Coordinates multistep flows")
+  Container(notificationService, "Notification Service", "Email/SMS APIs", "Sends alerts")
+
+  ContainerDb(pg, "PostgreSQL", "Relational DB", "Stores users, applications, logs")
+  ContainerDb(s3, "S3 Storage", "Object Store", "Stores uploaded documents")
+  ContainerDb(redis, "Redis", "Key-Value Store", "Caching and sessions")
+  ContainerDb(es, "Elasticsearch", "Search Engine", "Indexes internships")
+  ContainerDb(kafka, "Kafka", "Event Streaming", "Logs audit trails")
+}
+
+Rel(web, api, "Uses")
+Rel(api, userService, "Routes to")
+Rel(api, applicationService, "Routes to")
+Rel(api, documentService, "Routes to")
+Rel(api, legalService, "Routes to")
+Rel(api, matchingService, "Routes to")
+Rel(api, workflowEngine, "Routes to")
+Rel(api, notificationService, "Routes to")
+
+Rel(userService, pg, "Reads/Writes")
+Rel(applicationService, pg, "Reads/Writes")
+Rel(documentService, s3, "Stores documents")
+Rel(documentService, kafka, "Emits events")
+Rel(legalService, pg, "Reads/Writes")
+Rel(matchingService, es, "Searches")
+Rel(workflowEngine, kafka, "Reads events")
+Rel(notificationService, redis, "Reads/Writes")
+
+
+```
+
+## 9. Tradeoffs
+
+| Design Choice           | Reason                            | Trade-off                          |
+|-------------------------|-----------------------------------|------------------------------------|
+| Modular Monolith        | Central consistency & control     | Slower independent deployments     |
+| SQL + Redis + S3        | Strong typing and search          | More services to manage            |
+| OPA for rules           | Flexibility and auditability      | Slight latency in evaluation       |
+| Region-based sharding   | Compliance, latency               | More infrastructure complexity     |
